@@ -3,6 +3,7 @@ const input = document.getElementById("word-input");
 const button = document.getElementById("search-btn");
 const status = document.getElementById("status");
 const results = document.getElementById("results");
+const demoBanner = document.getElementById("demo-banner");
 
 function escapeHtml(str) {
   const div = document.createElement("div");
@@ -16,6 +17,12 @@ function renderEntry(entry) {
 
   const heading = document.createElement("h2");
   heading.textContent = entry.word;
+  if (entry.demo) {
+    const badge = document.createElement("span");
+    badge.className = "demo-badge";
+    badge.textContent = "Demo data";
+    heading.appendChild(badge);
+  }
   card.appendChild(heading);
 
   entry.meanings.forEach((meaning) => {
@@ -79,3 +86,28 @@ form.addEventListener("submit", (e) => {
   input.value = "";
   lookupWord(word);
 });
+
+async function initDemoBanner() {
+  try {
+    const response = await fetch("/api/status");
+    const data = await response.json();
+    if (!data.demoMode) return;
+
+    demoBanner.hidden = false;
+    demoBanner.innerHTML =
+      "No ANTHROPIC_API_KEY is configured, so this app is running in demo mode with sample data for a few words. " +
+      "Add a key to look up any word. Try: ";
+
+    data.demoWords.forEach((word) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = word;
+      btn.addEventListener("click", () => lookupWord(word));
+      demoBanner.appendChild(btn);
+    });
+  } catch {
+    // Status check is best-effort; ignore failures.
+  }
+}
+
+initDemoBanner();

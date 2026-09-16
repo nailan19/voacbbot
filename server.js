@@ -3,12 +3,19 @@ import express from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { demoData } from "./demoData.js";
 
 const app = express();
 app.use(express.json());
 app.use(express.static("public"));
 
-const client = new Anthropic();
+const hasApiKey = Boolean(process.env.ANTHROPIC_API_KEY);
+const client = hasApiKey ? new Anthropic() : null;
+const demoWords = Object.keys(demoData).sort();
+
+app.get("/api/status", (req, res) => {
+  res.json({ demoMode: !hasApiKey, demoWords: hasApiKey ? [] : demoWords });
+});
 
 const WordEntrySchema = z.object({
   word: z.string(),
@@ -34,6 +41,16 @@ app.post("/api/word", async (req, res) => {
     return res
       .status(400)
       .json({ error: "Please enter a single valid English word or phrase." });
+  }
+
+  if (!hasApiKey) {
+    const entry = demoData[word.toLowerCase()];
+    if (!entry) {
+      return res.status(404).json({
+        error: `No ANTHROPIC_API_KEY is configured, so only a few demo words are available. Try: ${demoWords.join(", ")}.`,
+      });
+    }
+    return res.json({ ...entry, demo: true });
   }
 
   try {
